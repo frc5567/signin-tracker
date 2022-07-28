@@ -26,4 +26,4 @@ jobs:
     # Get flutter packages
     - run: flutter pub get
     # Build :D 
-    - run: flutter build apt
+    - run: flutter build apk
