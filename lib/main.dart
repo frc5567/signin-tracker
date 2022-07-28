@@ -13,8 +13,13 @@ void main() {
   runApp(const MyApp());
 }
 
+/// People who have signed in and out
 List<Person> signInList = [];
+
+/// Map of people who are currently signed in
 Map<String, DateTime> currentlySignedIn = {};
+
+/// Default currently selected option for dropdown
 String _currentSelect = "None";
 
 class MyApp extends StatelessWidget {
@@ -24,15 +29,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Sign In Tracker',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.red,
       ),
       home: const MyHomePage(title: 'Sign In/Out'),
     );
   }
 }
 
+/// Custom dropdown menu, encapsulates dropdown for easier management
 class MyDropdown extends StatefulWidget {
   final Stream<String> stream;
   const MyDropdown({required this.stream, Key? key}) : super(key: key);
@@ -44,24 +50,24 @@ class MyDropdown extends StatefulWidget {
 class _MyDropdownState extends State<MyDropdown> {
   late StreamSubscription subscription;
 
-  @override
-  void initState() {
-    print("init drop");
-    super.initState();
-  }
-
+  /// Subscribe so we can update the dropdown menu when the available values change.
+  /// This basically lets our other widgets update our state.
   Future<void> setSubscription() async {
     try {
       subscription = widget.stream.listen((value) {
         setState(() {});
       });
     } catch (ignored) {
-      print("oop");
+      if (kDebugMode) {
+        print("Subscription failed, likely because we were already subscribed");
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ideally this would only be called on Widget init, but that just didn't
+    // work for me, hence calling it here and the trycatch hack for resubscribing
     setSubscription();
 
     return DropdownButtonHideUnderline(
@@ -69,17 +75,18 @@ class _MyDropdownState extends State<MyDropdown> {
         hint: Text(
           'Select Item',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 24,
             color: Theme.of(context).hintColor,
           ),
         ),
+        // Map the names of people currently signed in as dropdown items
         items: currentlySignedIn.keys
             .map((item) => DropdownMenuItem<String>(
                   value: item,
                   child: Text(
                     item,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 24,
                     ),
                   ),
                 ))
@@ -90,9 +97,19 @@ class _MyDropdownState extends State<MyDropdown> {
             _currentSelect = value as String;
           });
         },
-        buttonHeight: 40,
-        buttonWidth: 140,
+        // yes constants here are bad, but this will only run on our tablets,
+        // so we can ignore flexibility
+        buttonHeight: 120,
+        buttonWidth: 420,
         itemHeight: 40,
+        buttonPadding: const EdgeInsets.all(16),
+        dropdownPadding: const EdgeInsets.all(16),
+        buttonDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.black26,
+          ),
+        ),
       ),
     );
   }
@@ -110,28 +127,45 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _formKey = GlobalKey<FormState>();
 
+  /// Writes the data currently saved to a csv
   void _writeData() async {
     List<List<dynamic>> rows = [[]];
+    // add each person who has signed in and out to the list
     for (Person person in signInList) {
       rows.add(person.toList());
     }
+
+    // add people who have not signed out to the list
+    for(var person in currentlySignedIn.entries) {
+      rows.add([person.key, person.value, ""]);
+    }
+
+    // get the external directory for writing
     final Directory? dir = await getExternalStorageDirectory();
+
+    // grab the current time and create a string
     DateTime today = DateTime.now();
     String dateStr = "${today.day}-${today.month}-${today.year}--${today.hour}:${today.minute}";
+
+    // create a file, deleting it if one already exists, and write csv to it
     final file = File(join(dir!.path, dateStr + 'people.csv'));
     if (file.existsSync()) {
       file.deleteSync();
     }
     file.createSync();
-    print(file.path);
+    if (kDebugMode) {
+      print(file.path);
+    }
     String csv = const ListToCsvConverter().convert(rows);
     file.writeAsString(csv);
   }
 
+  /// Add a person to our map
   void _addPerson(String name) {
     currentlySignedIn.putIfAbsent(name, () => DateTime.now());
   }
 
+  /// Remove a person to our map and add them to the list with a sign out time
   void _signOut(String name) {
     _currentSelect = "None";
     Person signingOut = Person(
@@ -140,25 +174,32 @@ class _MyHomePageState extends State<MyHomePage> {
     signInList.add(signingOut);
   }
 
+  /// Text editing controller to allow us to empty name input field
   final myController = TextEditingController();
 
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
     myController.dispose();
+    // this doesn't seem to work but \shrug
     _writeData();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // create stream controller to send events to our dropdown
     StreamController<String> _controller = StreamController<String>();
+
+    // add default value to our list. This will appear in csv, but so be it
     currentlySignedIn.putIfAbsent("None", () => DateTime.now());
-    print(currentlySignedIn.keys);
+
+    // screen size data for scaling our button
     final width = MediaQuery.of(context).size.width;
     const scalar = 0.05;
     const padding = 16.0;
 
+    // declare button widget so we can remove the "WriteData" button in release
     Widget button = const Padding(
         padding: EdgeInsets.all(padding));
     if (kDebugMode) {
@@ -199,6 +240,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   Padding(
                       padding: const EdgeInsets.all(padding),
                       child: TextFormField(
+                        style: const TextStyle(
+                          fontSize: 24
+                        ),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Enter your name',
+                        ),
                         controller: myController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -248,7 +296,9 @@ class _MyHomePageState extends State<MyHomePage> {
                             _currentSelect = "None";
                             _controller.sink.add("None");
                           } else {
-                            print("bad");
+                            if (kDebugMode) {
+                              print("You've tried to delete the \"None\" entry. Don't do that.");
+                            }
                           }
                         },
                       )),

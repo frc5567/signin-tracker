@@ -2,3 +2,7 @@
 
 An app to track sign in and out for Robotics practices
 
+### TODO
+ - Documentation
+ - When do we write data?
+ - Icon
