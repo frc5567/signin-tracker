@@ -71,7 +71,7 @@ class _MyDropdownState extends State<MyDropdown> {
   @override
   Widget build(BuildContext context) {
     // Ideally this would only be called on Widget init, but that just didn't
-    // work for me, hence calling it here and the trycatch hack for resubscribing
+    // work for me, hence calling it here and the try catch hack for resubscribing
     setSubscription();
 
     return DropdownButtonHideUnderline(
@@ -130,12 +130,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
-  late AppLifecycleState _notification;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance!.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
   }
 
 
@@ -153,9 +152,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         // do nothing on resume
         break;
     }
-    setState(() {
-      _notification = state;
-    });
+    setState(() {});
   }
 
   /// Writes the data currently saved to a csv
@@ -180,7 +177,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         "${today.day}-${today.month}-${today.year}--${today.hour}:${today.minute}";
 
     // create a file, deleting it if one already exists, and write csv to it
-    final file = File(join(dir!.path, dateStr + 'people.csv'));
+    final file = File(join(dir!.path, dateStr + '.csv'));
     if (file.existsSync()) {
       file.deleteSync();
     }
@@ -213,7 +210,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void dispose() {
     // Clean up the controller when the widget is disposed.
     myController.dispose();
-    WidgetsBinding.instance!.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     // this doesn't seem to work but \shrug
     _writeData();
     super.dispose();

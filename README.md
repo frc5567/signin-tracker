@@ -10,6 +10,13 @@ The data is outputted as a csv to the External Storage (android/data/com.frc5567
 The first column is the username, the second is sign in time, and the third is sign out. There will be a
 row labelled "Select your name" with a sign in time, that was when the app was launched.
 
+To deploy - see https://docs.flutter.dev/deployment/android
+You don't need to do all the signing steps for local deployment, just 
+```
+flutter build apk --release
+flutter install
+```
+
 
 ### TODO
  - Documentation
