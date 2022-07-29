@@ -8,9 +8,10 @@ To sign out, select your name form the dropdown and tap sign out
 Data formatting:
 The data is outputted as a csv to the External Storage (android/data/com.frc5567.signin_tracker_5567/files).
 The first column is the username, the second is sign in time, and the third is sign out. There will be a
-row labelled None with a sign in time, that was when the app was launched.
+row labelled "Select your name" with a sign in time, that was when the app was launched.
+
 
 ### TODO
  - Documentation
- - When do we write data?
+ - When do we write data? Right now write data on app close
  - Icon
