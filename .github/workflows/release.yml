@@ -31,5 +31,5 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
-          artifacts: "app-release.apk"
+          artifacts: "release.apk"
           draft: true
