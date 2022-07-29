@@ -136,7 +136,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     // add people who have not signed out to the list
-    for(var person in currentlySignedIn.entries) {
+    for (var person in currentlySignedIn.entries) {
       rows.add([person.key, person.value, ""]);
     }
 
@@ -145,7 +145,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // grab the current time and create a string
     DateTime today = DateTime.now();
-    String dateStr = "${today.day}-${today.month}-${today.year}--${today.hour}:${today.minute}";
+    String dateStr =
+        "${today.day}-${today.month}-${today.year}--${today.hour}:${today.minute}";
 
     // create a file, deleting it if one already exists, and write csv to it
     final file = File(join(dir!.path, dateStr + 'people.csv'));
@@ -200,8 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
     const padding = 16.0;
 
     // declare button widget so we can remove the "WriteData" button in release
-    Widget button = const Padding(
-        padding: EdgeInsets.all(padding));
+    Widget button = const Padding(padding: EdgeInsets.all(padding));
     if (kDebugMode) {
       button = Padding(
           padding: const EdgeInsets.all(padding),
@@ -240,9 +240,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Padding(
                       padding: const EdgeInsets.all(padding),
                       child: TextFormField(
-                        style: const TextStyle(
-                          fontSize: 24
-                        ),
+                        style: const TextStyle(fontSize: 24),
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           labelText: 'Enter your name',
@@ -297,7 +295,8 @@ class _MyHomePageState extends State<MyHomePage> {
                             _controller.sink.add("None");
                           } else {
                             if (kDebugMode) {
-                              print("You've tried to delete the \"None\" entry. Don't do that.");
+                              print(
+                                  "You've tried to delete the \"None\" entry. Don't do that.");
                             }
                           }
                         },
