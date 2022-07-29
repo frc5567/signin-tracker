@@ -124,8 +124,35 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
+  late AppLifecycleState _notification;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addObserver(this);
+  }
+
+
+  // try to save whenever app state changes - i.e. we go to home screen
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        _writeData();
+        break;
+      case AppLifecycleState.resumed:
+        // do nothing on resume
+        break;
+    }
+    setState(() {
+      _notification = state;
+    });
+  }
 
   /// Writes the data currently saved to a csv
   void _writeData() async {
@@ -182,6 +209,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     // Clean up the controller when the widget is disposed.
     myController.dispose();
+    WidgetsBinding.instance!.removeObserver(this);
     // this doesn't seem to work but \shrug
     _writeData();
     super.dispose();
