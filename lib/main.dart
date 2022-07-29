@@ -19,8 +19,12 @@ List<Person> signInList = [];
 /// Map of people who are currently signed in
 Map<String, DateTime> currentlySignedIn = {};
 
-/// Default currently selected option for dropdown
-String _currentSelect = "None";
+/// Default dropdown string
+const _defaultDropdown = "Select your name";
+
+/// currently selected option for dropdown
+String _currentSelect = _defaultDropdown;
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -195,7 +199,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   /// Remove a person to our map and add them to the list with a sign out time
   void _signOut(String name) {
-    _currentSelect = "None";
+    _currentSelect = _defaultDropdown;
     Person signingOut = Person(
         name: name, signIn: currentlySignedIn.remove(name) ?? DateTime.now());
     signingOut.signOut = DateTime.now();
@@ -221,7 +225,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     StreamController<String> _controller = StreamController<String>();
 
     // add default value to our list. This will appear in csv, but so be it
-    currentlySignedIn.putIfAbsent("None", () => DateTime.now());
+    currentlySignedIn.putIfAbsent(_defaultDropdown, () => DateTime.now());
 
     // screen size data for scaling our button
     final width = MediaQuery.of(context).size.width;
@@ -317,14 +321,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           ),
                         ),
                         onPressed: () {
-                          if (_currentSelect != "None") {
+                          if (_currentSelect != _defaultDropdown) {
                             _signOut(_currentSelect);
-                            _currentSelect = "None";
-                            _controller.sink.add("None");
+                            _currentSelect = _defaultDropdown;
+                            _controller.sink.add("Select your name");
                           } else {
                             if (kDebugMode) {
                               print(
-                                  "You've tried to delete the \"None\" entry. Don't do that.");
+                                  "You've tried to delete the \""+ _defaultDropdown + "\" entry. Don't do that.");
                             }
                           }
                         },
