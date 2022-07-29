@@ -33,8 +33,3 @@ jobs:
           tag: ${{ steps.tag_version.outputs.new_tag }}
           artifacts: "app-release.apk"
           draft: true
-          
-       
-      - name: Create a GitHub release
-        uses: ncipollo/release-action@v1
-        with:
