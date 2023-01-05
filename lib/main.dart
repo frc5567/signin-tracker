@@ -19,12 +19,17 @@ List<Person> signInList = [];
 /// Map of people who are currently signed in
 Map<String, DateTime> currentlySignedIn = {};
 
+/// Set of people we load in from a csv if it exists
+List<String> possibleSignedIn = [];
+
 /// Default dropdown string
 const _defaultDropdown = "Select your name";
 
 /// currently selected option for dropdown
-String _currentSelect = _defaultDropdown;
+List<String> _currentSelect = [_defaultDropdown, _defaultDropdown];
 
+const signOutIndex = 0; // 0 bc always used, the index in currentSelect for sign out dropdown
+const addIndex = 1;     // index for add dropdown
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -44,8 +49,10 @@ class MyApp extends StatelessWidget {
 
 /// Custom dropdown menu, encapsulates dropdown for easier management
 class MyDropdown extends StatefulWidget {
+  final int index;
   final Stream<String> stream;
-  const MyDropdown({required this.stream, Key? key}) : super(key: key);
+  final List<String> options;
+  const MyDropdown({required this.stream, required this.options, required this.index, Key? key}) : super(key: key);
 
   @override
   _MyDropdownState createState() => _MyDropdownState();
@@ -53,6 +60,12 @@ class MyDropdown extends StatefulWidget {
 
 class _MyDropdownState extends State<MyDropdown> {
   late StreamSubscription subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    setSubscription();
+  }
 
   /// Subscribe so we can update the dropdown menu when the available values change.
   /// This basically lets our other widgets update our state.
@@ -72,7 +85,6 @@ class _MyDropdownState extends State<MyDropdown> {
   Widget build(BuildContext context) {
     // Ideally this would only be called on Widget init, but that just didn't
     // work for me, hence calling it here and the try catch hack for resubscribing
-    setSubscription();
 
     return DropdownButtonHideUnderline(
       child: DropdownButton2(
@@ -84,8 +96,7 @@ class _MyDropdownState extends State<MyDropdown> {
           ),
         ),
         // Map the names of people currently signed in as dropdown items
-        items: currentlySignedIn.keys
-            .map((item) => DropdownMenuItem<String>(
+        items: widget.options.map((item) => DropdownMenuItem<String>(
                   value: item,
                   child: Text(
                     item,
@@ -95,10 +106,10 @@ class _MyDropdownState extends State<MyDropdown> {
                   ),
                 ))
             .toList(),
-        value: _currentSelect,
+        value: _currentSelect[widget.index],
         onChanged: (value) {
           setState(() {
-            _currentSelect = value as String;
+            _currentSelect[widget.index] = value as String;
           });
         },
         // yes constants here are bad, but this will only run on our tablets,
@@ -129,14 +140,59 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+  // key for our form for validation purposes
   final _formKey = GlobalKey<FormState>();
+  bool csvFound = false;
+  bool _isLoading = false;
+  final scalar = 0.05;
+  final padding = 16.0;
+  late Widget personSelect;
+  final StreamController<String> currentController = StreamController();
+  final StreamController<String> signoutController = StreamController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    setState(() {
+      _isLoading = true; // your loader has started to load
+    });
+    WidgetsBinding.instance!.addObserver(this);
+    csvFound = false;
+    var result = loadMembers();
+    result.whenComplete(() => setState(() {
+      _isLoading = false;
+    }));
   }
 
+  Future<void> loadMembers() async {
+    // get the external directory for writing
+    final Directory? dir = await getExternalStorageDirectory();
+    final file = File(join(dir!.path, 'people.csv'));
+    if (file.existsSync()) {
+      csvFound = true;
+      possibleSignedIn = file.readAsStringSync().split('\n');
+      possibleSignedIn.insert(0, _currentSelect[addIndex]);
+      possibleSignedIn.remove("");
+      personSelect = MyDropdown(stream: currentController.stream, options: possibleSignedIn, index: addIndex);
+    } else {
+      personSelect = Padding(
+          padding: EdgeInsets.all(padding),
+          child: TextFormField(
+            style: const TextStyle(fontSize: 24),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Enter your name',
+            ),
+            controller: myController,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please input your name';
+              }
+              return null;
+            },
+          ));
+    }
+  }
 
   // try to save whenever app state changes - i.e. we go to home screen
   @override
@@ -191,12 +247,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   /// Add a person to our map
   void _addPerson(String name) {
-    currentlySignedIn.putIfAbsent(name, () => DateTime.now());
+    currentlySignedIn.putIfAbsent(name, DateTime.now);
   }
 
   /// Remove a person to our map and add them to the list with a sign out time
-  void _signOut(String name) {
-    _currentSelect = _defaultDropdown;
+  void _signOut(String name, int index) {
+    _currentSelect[index] = _defaultDropdown;
     Person signingOut = Person(
         name: name, signIn: currentlySignedIn.remove(name) ?? DateTime.now());
     signingOut.signOut = DateTime.now();
@@ -210,30 +266,25 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void dispose() {
     // Clean up the controller when the widget is disposed.
     myController.dispose();
-    WidgetsBinding.instance.removeObserver(this);
-    // this doesn't seem to work but \shrug
+    WidgetsBinding.instance!.removeObserver(this);
+    // this will probably only be called on app shutdown (indirectly, without being put in background) TODO
     _writeData();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // create stream controller to send events to our dropdown
-    StreamController<String> _controller = StreamController<String>();
-
     // add default value to our list. This will appear in csv, but so be it
-    currentlySignedIn.putIfAbsent(_defaultDropdown, () => DateTime.now());
+    currentlySignedIn.putIfAbsent(_defaultDropdown, DateTime.now);
 
     // screen size data for scaling our button
     final width = MediaQuery.of(context).size.width;
-    const scalar = 0.05;
-    const padding = 16.0;
 
     // declare button widget so we can remove the "WriteData" button in release
-    Widget button = const Padding(padding: EdgeInsets.all(padding));
+    Widget writeDataDebugButton = Padding(padding: EdgeInsets.all(padding));
     if (kDebugMode) {
-      button = Padding(
-          padding: const EdgeInsets.all(padding),
+      writeDataDebugButton = Padding(
+          padding: EdgeInsets.all(padding),
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
                 minimumSize: Size(width * 0.1, width * 0.05),
@@ -256,7 +307,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
+      body: _isLoading ? const CircularProgressIndicator() : Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
         child: Column(
@@ -266,24 +317,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               key: _formKey,
               child: Column(
                 children: <Widget>[
+                  personSelect,
                   Padding(
-                      padding: const EdgeInsets.all(padding),
-                      child: TextFormField(
-                        style: const TextStyle(fontSize: 24),
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Enter your name',
-                        ),
-                        controller: myController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please input your name';
-                          }
-                          return null;
-                        },
-                      )),
-                  Padding(
-                      padding: const EdgeInsets.all(padding),
+                      padding: EdgeInsets.all(padding),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             minimumSize: Size(width * 0.1, width * 0.05),
@@ -295,16 +331,36 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           ),
                         ),
                         onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _addPerson(myController.text);
-                            myController.text = "";
-                            _controller.sink.add("");
+                          if(csvFound) {
+                            if (_currentSelect[addIndex] != _defaultDropdown) {
+                              final name = _currentSelect[addIndex];
+                              _addPerson(name);
+                              _currentSelect[addIndex] = _defaultDropdown;
+                              signoutController.sink.add(name);
+                              currentController.sink.add("Select your name");
+                              possibleSignedIn.remove(name);
+                              setState(() {
+
+                              });
+                            } else {
+                              if (kDebugMode) {
+                                print("You've tried to delete the \"" +
+                                    _defaultDropdown +
+                                    "\" entry. Don't do that.");
+                              }
+                            }
+                          } else {
+                            if (_formKey.currentState!.validate()) {
+                              _addPerson(myController.text);
+                              myController.text = "";
+                              signoutController.sink.add("");
+                            }
                           }
                         },
                       )),
                   Padding(
-                      padding: const EdgeInsets.all(padding),
-                      child: MyDropdown(stream: _controller.stream)),
+                      padding: EdgeInsets.all(padding),
+                      child: MyDropdown(stream: signoutController.stream, index: signOutIndex, options: currentlySignedIn.keys.toList()), ),
                   Padding(
                       padding: const EdgeInsets.all(16),
                       child: ElevatedButton(
@@ -318,19 +374,27 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           ),
                         ),
                         onPressed: () {
-                          if (_currentSelect != _defaultDropdown) {
-                            _signOut(_currentSelect);
-                            _currentSelect = _defaultDropdown;
-                            _controller.sink.add("Select your name");
+                          if (_currentSelect[signOutIndex] != _defaultDropdown) {
+                            if (csvFound) {
+                              final name = _currentSelect[signOutIndex];
+                              possibleSignedIn.add(name);
+                              currentController.sink.add("Updating sign in list");
+                            }
+                            _signOut(_currentSelect[signOutIndex], signOutIndex);
+                            signoutController.sink.add("Select your name");
+                            setState(() {
+
+                            });
                           } else {
                             if (kDebugMode) {
-                              print(
-                                  "You've tried to delete the \""+ _defaultDropdown + "\" entry. Don't do that.");
+                              print("You've tried to delete the \"" +
+                                  _defaultDropdown +
+                                  "\" entry. Don't do that.");
                             }
                           }
                         },
                       )),
-                  button,
+                  writeDataDebugButton, // write data button, only exists in debug TODO rename
                 ],
               ),
             ),
