@@ -233,7 +233,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         "${today.day}-${today.month}-${today.year}--${today.hour}:${today.minute}";
 
     // create a file, deleting it if one already exists, and write csv to it
-    final file = File(join(dir!.path, dateStr + '.csv'));
+    final file = File(join(dir!.path, (dateStr + '.csv').replaceAll(":", "-")));
     if (file.existsSync()) {
       file.deleteSync();
     }
@@ -241,7 +241,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (kDebugMode) {
       print(file.path);
     }
-    String csv = const ListToCsvConverter().convert(rows);
+    String csv = const ListToCsvConverter().convert(rows).trimLeft();
     file.writeAsString(csv);
   }
 
